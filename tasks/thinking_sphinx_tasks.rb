@@ -2,6 +2,7 @@ require 'fileutils'
 
 namespace :thinking_sphinx do
   task :app_env do
+    Rake::Task[:environment].invoke if defined?(Ramaze) # Ramaze doesn't have the notion of environment - this is a custom :environment task
     Rake::Task[:environment].invoke if defined?(RAILS_ROOT)
     Rake::Task[:merb_env].invoke    if defined?(Merb)
   end
