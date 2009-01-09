@@ -380,9 +380,9 @@ module ThinkingSphinx
         client.offset = (page - 1) * client.limit
 
         begin
-          ::ActiveRecord::Base.logger.debug "Sphinx: #{query}"
+          ::ActiveRecord::Base.logger.debug "Sphinx: #{query}" unless ::ActiveRecord::Base.logger.nil?
           results = client.query query
-          ::ActiveRecord::Base.logger.debug "Sphinx Result: #{results[:matches].collect{|m| m[:attributes]["sphinx_internal_id"]}.inspect}"
+          ::ActiveRecord::Base.logger.debug "Sphinx Result: #{results[:matches].collect{|m| m[:attributes]["sphinx_internal_id"]}.inspect}" unless ::ActiveRecord::Base.logger.nil?
         rescue Errno::ECONNREFUSED => err
           raise ThinkingSphinx::ConnectionError, "Connection to Sphinx Daemon (searchd) failed."
         end
