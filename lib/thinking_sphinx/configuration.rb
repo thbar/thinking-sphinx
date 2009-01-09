@@ -69,6 +69,7 @@ module ThinkingSphinx
     end
     
     def reset
+      self.app_root          = RAMAZE_ROOT if defined?(RAMAZE_ROOT) # RAMAZE_ROOT is defined by me - TODO: find a built-in equivalent in Ramaze
       self.app_root          = RAILS_ROOT if defined?(RAILS_ROOT)
       self.app_root          = Merb.root  if defined?(Merb)
       self.app_root        ||= app_root
