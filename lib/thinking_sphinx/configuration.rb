@@ -55,7 +55,8 @@ module ThinkingSphinx
         
     attr_accessor :config_file, :searchd_log_file, :query_log_file,
       :pid_file, :searchd_file_path, :address, :port, :allow_star,
-      :database_yml_file, :app_root, :bin_path, :model_directories
+      :database_yml_file, :app_root, :bin_path, :model_directories,
+      :app_env_task
     
     attr_accessor :source_options, :index_options
     
