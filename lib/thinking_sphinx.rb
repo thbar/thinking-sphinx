@@ -6,11 +6,14 @@ require 'active_record'
 require 'riddle'
 require 'after_commit'
 
+require 'thinking_sphinx/core/string'
 require 'thinking_sphinx/active_record'
 require 'thinking_sphinx/association'
 require 'thinking_sphinx/attribute'
 require 'thinking_sphinx/collection'
 require 'thinking_sphinx/configuration'
+require 'thinking_sphinx/facet'
+require 'thinking_sphinx/facet_collection'
 require 'thinking_sphinx/field'
 require 'thinking_sphinx/index'
 require 'thinking_sphinx/rails_additions'
@@ -24,14 +27,14 @@ require 'thinking_sphinx/adapters/postgresql_adapter'
 ActiveRecord::Base.send(:include, ThinkingSphinx::ActiveRecord)
 
 Merb::Plugins.add_rakefiles(
-  File.join(File.dirname(__FILE__), "..", "tasks", "thinking_sphinx_tasks")
+  File.join(File.dirname(__FILE__), "thinking_sphinx", "tasks")
 ) if defined?(Merb)
 
 module ThinkingSphinx
   module Version #:nodoc:
     Major = 1
     Minor = 1
-    Tiny  = 1
+    Tiny  = 3
     
     String = [Major, Minor, Tiny].join('.')
   end

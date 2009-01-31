@@ -10,7 +10,7 @@ module ThinkingSphinx
   module ActiveRecord
     def self.included(base)
       base.class_eval do
-        class_inheritable_array :sphinx_indexes
+        class_inheritable_array :sphinx_indexes, :sphinx_facets
         class << self
           # Allows creation of indexes for Sphinx. If you don't do this, there
           # isn't much point trying to search (or using this plugin at all,
@@ -94,14 +94,7 @@ module ThinkingSphinx
           # you in some other way, awesome.
           # 
           def to_crc32
-            result = 0xFFFFFFFF
-            self.name.each_byte do |byte|
-              result ^= byte
-              8.times do
-                result = (result >> 1) ^ (0xEDB88320 * (result & 1))
-              end
-            end
-            result ^ 0xFFFFFFFF
+            self.name.to_crc32
           end
           
           def to_crc32s
@@ -121,11 +114,16 @@ module ThinkingSphinx
           end
           
           def to_riddle(offset)
-            ThinkingSphinx::AbstractAdapter.detect(self).setup
+            sphinx_database_adapter.setup
             
             indexes = [to_riddle_for_core(offset)]
             indexes << to_riddle_for_delta(offset) if sphinx_delta?
             indexes << to_riddle_for_distributed
+          end
+          
+          def sphinx_database_adapter
+            @sphinx_database_adapter ||=
+              ThinkingSphinx::AbstractAdapter.detect(self)
           end
           
           private

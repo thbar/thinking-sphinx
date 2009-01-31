@@ -29,6 +29,10 @@ module ThinkingSphinx
         # do nothing
       end
       
+      def toggled(instance)
+        instance.send(@column) > @threshold.ago
+      end
+      
       def reset_query(model)
         nil
       end
@@ -36,20 +40,9 @@ module ThinkingSphinx
       def clause(model, toggled)
         if toggled
           "#{model.quoted_table_name}.#{@index.quote_column(@column.to_s)}" +
-          " > #{time_difference}"
+          " > #{adapter.time_difference(@threshold)}"
         else
           nil
-        end
-      end
-      
-      def time_difference
-        case @index.adapter
-        when :mysql
-          "DATE_SUB(NOW(), INTERVAL #{@threshold} SECOND)"
-        when :postgres
-          "current_timestamp - interval '#{@threshold} seconds'"
-        else
-          raise "Unknown Database Adapter"
         end
       end
     end

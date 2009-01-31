@@ -89,13 +89,13 @@ module ThinkingSphinx
           args.each do |columns|
             fields << Field.new(FauxColumn.coerce(columns), options)
             
-            if fields.last.sortable
+            if fields.last.sortable || fields.last.faceted
               attributes << Attribute.new(
                 fields.last.columns.collect { |col| col.clone },
                 options.merge(
                   :type => :string,
                   :as => fields.last.unique_name.to_s.concat("_sort").to_sym
-                )
+                ).except(:facet)
               )
             end
           end
@@ -146,6 +146,15 @@ module ThinkingSphinx
           end
         end
         alias_method :attribute, :has
+        
+        def facet(*args)
+          options = args.extract_options!
+          options[:facet] = true
+          
+          args.each do |columns|
+            attributes << Attribute.new(FauxColumn.coerce(columns), options)
+          end
+        end
         
         # Use this method to add some manual SQL conditions for your index
         # request. You can pass in as many strings as you like, they'll get

@@ -21,7 +21,7 @@ module ThinkingSphinx
         
         options = args.extract_options!
         page    = options[:page] ? options[:page].to_i : 1
-
+        
         ThinkingSphinx::Collection.ids_from_results(results, page, client.limit, options)
       end
 
@@ -349,6 +349,18 @@ module ThinkingSphinx
           return client.query(query, args[1])[:matches].length > 0
         rescue Errno::ECONNREFUSED => err
           raise ThinkingSphinx::ConnectionError, "Connection to Sphinx Daemon (searchd) failed."
+        end
+      end
+      
+      def facets(*args)
+        hash    = ThinkingSphinx::FacetCollection.new args
+        options = args.extract_options!.clone.merge! :group_function => :attr
+        
+        options[:class].sphinx_facets.inject(hash) do |hash, facet|
+          options[:group_by] = facet.attribute_name
+          
+          hash.add_from_results facet, search(*(args + [options]))
+          hash
         end
       end
       

@@ -26,7 +26,7 @@ namespace :thinking_sphinx do
     
     Dir["#{config.searchd_file_path}/*.spl"].each { |file| File.delete(file) }
 
-    cmd = "#{config.bin_path}searchd --config #{config.config_file}"
+    cmd = "#{config.bin_path}searchd --pidfile --config #{config.config_file}"
     puts cmd
     system cmd
     
@@ -109,8 +109,8 @@ namespace :ts do
   task :stop    => "thinking_sphinx:stop"
   desc "Index data for Sphinx using Thinking Sphinx's settings"
   task :in      => "thinking_sphinx:index"
-  desc "Index data for Sphinx using Thinking Sphinx's settings"
   namespace :in do
+    desc "Index Thinking Sphinx datetime delta indexes"
     task :delta => "thinking_sphinx:index:delta"
   end
   task :index   => "thinking_sphinx:index"

@@ -9,7 +9,7 @@ module ThinkingSphinx
   # associations. Which can get messy. Use Index.link!, it really helps.
   # 
   class Attribute
-    attr_accessor :alias, :columns, :associations, :model
+    attr_accessor :alias, :columns, :associations, :model, :faceted
     
     # To create a new attribute, you'll need to pass in either a single Column
     # or an array of them, and some (optional) options.
@@ -59,8 +59,9 @@ module ThinkingSphinx
       
       raise "Cannot define a field with no columns. Maybe you are trying to index a field with a reserved name (id, name). You can fix this error by using a symbol rather than a bare name (:id instead of id)." if @columns.empty? || @columns.any? { |column| !column.respond_to?(:__stack) }
       
-      @alias        = options[:as]
-      @type         = options[:type]
+      @alias    = options[:as]
+      @type     = options[:type]
+      @faceted  = options[:facet]
     end
     
     # Get the part of the SELECT clause related to this attribute. Don't forget
@@ -76,10 +77,10 @@ module ThinkingSphinx
       
       separator = all_ints? ? ',' : ' '
       
-      clause = concatenate(clause, separator)       if concat_ws?
-      clause = group_concatenate(clause, separator) if is_many?
-      clause = cast_to_datetime(clause)             if type == :datetime
-      clause = convert_nulls(clause)                if type == :string
+      clause = adapter.concatenate(clause, separator)       if concat_ws?
+      clause = adapter.group_concatenate(clause, separator) if is_many?
+      clause = adapter.cast_to_datetime(clause)             if type == :datetime
+      clause = adapter.convert_nulls(clause)                if type == :string
       
       "#{clause} AS #{quote_column(unique_name)}"
     end
@@ -133,63 +134,31 @@ module ThinkingSphinx
       end
     end
     
+    # Returns the type of the column. If that's not already set, it returns
+    # :multi if there's the possibility of more than one value, :string if
+    # there's more than one association, otherwise it figures out what the
+    # actual column's datatype is and returns that.
+    def type
+      @type ||= case
+      when is_many?
+        :multi
+      when @associations.values.flatten.length > 1
+        :string
+      else
+        translated_type_from_database
+      end
+    end
+    
+    def to_facet
+      return nil unless @faceted
+      
+      ThinkingSphinx::Facet.new(self)
+    end
+    
     private
     
-    def concatenate(clause, separator = ' ')
-      case @model.connection.class.name
-      when "ActiveRecord::ConnectionAdapters::MysqlAdapter"
-        "CONCAT_WS('#{separator}', #{clause})"
-      when "ActiveRecord::ConnectionAdapters::PostgreSQLAdapter"
-        clause.split(', ').collect { |attribute|
-          "COALESCE(#{attribute}, '')"
-        }.join(" || ' ' || ")
-      else
-        clause
-      end
-    end
-    
-    def group_concatenate(clause, separator = ' ')
-      case @model.connection.class.name
-      when "ActiveRecord::ConnectionAdapters::MysqlAdapter"
-        "GROUP_CONCAT(#{clause} SEPARATOR '#{separator}')"
-      when "ActiveRecord::ConnectionAdapters::PostgreSQLAdapter"
-        "array_to_string(array_accum(#{clause}), '#{separator}')"
-      else
-        clause
-      end
-    end
-    
-    def cast_to_string(clause)
-      case @model.connection.class.name
-      when "ActiveRecord::ConnectionAdapters::MysqlAdapter"
-        "CAST(#{clause} AS CHAR)"
-      when "ActiveRecord::ConnectionAdapters::PostgreSQLAdapter"
-        clause
-      else
-        clause
-      end
-    end
-    
-    def cast_to_datetime(clause)
-      case @model.connection.class.name
-      when "ActiveRecord::ConnectionAdapters::MysqlAdapter"
-        "UNIX_TIMESTAMP(#{clause})"
-      when "ActiveRecord::ConnectionAdapters::PostgreSQLAdapter"
-        "cast(extract(epoch from #{clause}) as int)"
-      else
-        clause
-      end
-    end
-    
-    def convert_nulls(clause)
-      case @model.connection.class.name
-      when "ActiveRecord::ConnectionAdapters::MysqlAdapter"
-        "IFNULL(#{clause}, '')"
-      when "ActiveRecord::ConnectionAdapters::PostgreSQLAdapter"
-        "COALESCE(#{clause}, '')"
-      else
-        clause
-      end
+    def adapter
+      @adapter ||= @model.sphinx_database_adapter
     end
     
     def quote_column(column)
@@ -203,16 +172,7 @@ module ThinkingSphinx
     def concat_ws?
       multiple_associations? || @columns.length > 1
     end
-    
-    # Checks the association tree for each column - if they're all the same,
-    # returns false.
-    # 
-    def multiple_sources?
-      first = associations[@columns.first]
-      
-      !@columns.all? { |col| associations[col] == first }
-    end
-    
+        
     # Checks whether any column requires multiple associations (which only
     # happens for polymorphic situations).
     # 
@@ -250,21 +210,6 @@ module ThinkingSphinx
     # column references.
     def is_string?
       columns.all? { |col| col.is_string? }
-    end
-    
-    # Returns the type of the column. If that's not already set, it returns
-    # :multi if there's the possibility of more than one value, :string if
-    # there's more than one association, otherwise it figures out what the
-    # actual column's datatype is and returns that.
-    def type
-      @type ||= case
-      when is_many?
-        :multi
-      when @associations.values.flatten.length > 1
-        :string
-      else
-        translated_type_from_database
-      end
     end
     
     def all_ints?
