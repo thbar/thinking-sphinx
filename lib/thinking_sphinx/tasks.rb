@@ -26,9 +26,7 @@ namespace :thinking_sphinx do
     
     Dir["#{config.searchd_file_path}/*.spl"].each { |file| File.delete(file) }
 
-    cmd = "#{config.bin_path}searchd --pidfile --config #{config.config_file}"
-    puts cmd
-    system cmd
+    system! "#{config.bin_path}searchd --pidfile --config #{config.config_file}"
     
     sleep(2)
     
@@ -44,7 +42,7 @@ namespace :thinking_sphinx do
     raise RuntimeError, "searchd is not running." unless sphinx_running?
     config = ThinkingSphinx::Configuration.instance
     pid    = sphinx_pid
-    system "searchd --stop --config #{config.config_file}"
+    system! "searchd --stop --config #{config.config_file}"
     puts "Stopped search daemon (pid #{pid})."
   end
   
@@ -71,8 +69,8 @@ namespace :thinking_sphinx do
     FileUtils.mkdir_p config.searchd_file_path
     cmd = "#{config.bin_path}indexer --config #{config.config_file} --all"
     cmd << " --rotate" if sphinx_running?
-    puts cmd
-    system cmd
+    
+    system! cmd
   end
   
   namespace :index do
@@ -130,4 +128,19 @@ end
 
 def sphinx_running?
   ThinkingSphinx.sphinx_running?
+end
+
+# a fail-fast, hopefully helpful version of system
+def system!(cmd)
+  unless system(cmd)
+    raise <<-SYSTEM_CALL_FAILED
+The following command failed!
+
+#{cmd}
+
+This may be caused by a PATH issue in your environment (cron/passenger/... ?). Here is the current PATH:
+
+#{ENV['PATH']}
+SYSTEM_CALL_FAILED
+  end
 end
